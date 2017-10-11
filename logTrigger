@@ -1,0 +1,14 @@
+create table logss(folha_antigo varchar(20),folha_novo varchar(20), id int, data datetime);
+go
+create trigger logTrigger on pessoas
+after update as 
+begin
+	declare @nfolha_old varchar(20), @nfolha_new varchar(20), @id int
+	select @nfolha_old = deleted.n_folha from deleted
+	select @nfolha_new = inserted.n_folha from inserted
+	select @id = deleted.id from deleted
+	if @nfolha_old != @nfolha_new
+		begin
+			insert into logss(folha_antigo, folha_novo, id, data) values(@nfolha_old, @nfolha_new, @id, GETDATE())
+		end
+end
