@@ -1,0 +1,28 @@
+CREATE TRIGGER [dbo].[Teste] ON [dbo].[pessoas] FOR UPDATE
+AS
+DECLARE teste_cursor CURSOR FOR
+
+SELECT id, nome FROM Inserted
+
+DECLARE @id int, @nome varchar(20)
+
+OPEN teste_cursor;
+
+FETCH NEXT FROM teste_cursor INTO @id, @nome
+
+WHILE @@FETCH_STATUS = 0
+
+BEGIN
+
+insert into logsss values(@id, @nome);
+
+PRINT 'Processing ID: ' + CONVERT(varchar(10), @id) + ' Nome: ' + @nome
+
+FETCH NEXT FROM teste_cursor INTO @id, @nome
+
+END;
+
+CLOSE teste_cursor;
+
+DEALLOCATE teste_cursor;
+GO
