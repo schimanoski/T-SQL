@@ -1,0 +1,66 @@
+select 
+RIGHT(CONVERT(varchar, tab_entrada.data, 103), 10),
+tab_entrada.nome,
+dbo.fn_hora_segundos(tab_entrada.hora) entrada,
+dbo.fn_hora_segundos(tab_saida.hora) saida,
+dbo.fn_hora_segundos(tab_saida.hora-tab_entrada.hora) 'tempo de lanche',
+tab_entrada.turno,
+tab_entrada.seq 
+from 
+(
+	select
+	ROW_NUMBER() OVER(PARTITION BY ea.data, ea.pessoa_id, ea.descricao ORDER BY ea.id) as 'seq', 
+	ea.id,  
+	ea.data,  
+	ea.hora,  
+	p.nome,  
+	ea.pessoa_id,  
+	descricao,  
+	tipo_acesso, 
+	(
+		case  
+			when ((hora / 3600) < 12)  then  'M' 
+			when ((hora / 3600) > 12)  then 'T' 
+		end
+	) as 'turno' 
+	from 
+	eventos_acessos ea join pessoas p on p.id = ea.pessoa_id  
+	where descricao = 'Entrada'
+) tab_entrada
+, 
+(
+	select  
+	ROW_NUMBER() OVER(PARTITION BY data, pessoa_id, descricao ORDER BY id) as 'seq',
+	id,  
+	data,  
+	hora,  
+	pessoa_id,  
+	descricao,  
+	tipo_acesso, 
+	(
+		case  
+			when ((hora / 3600) < 12)   then 'M'  
+			when ((hora / 3600) > 12)   then 'T' 
+		end
+	) as 'turno' 
+	from 
+	(select * from
+	(select *, RANK() OVER (PARTITION BY data, pessoa_id, turno ORDER BY hora) AS 'rk' from 
+		(select *, (
+				case  
+					when ((hora / 3600) < 12)   then 'M'  
+					when ((hora / 3600) > 12)   then 'T' 
+				end
+			) as 'turno'  from eventos_acessos
+		) tab2
+	) as tab where NOT(descricao = 'Saída' and rk = 1)
+	) tab
+		where descricao = 'Saída'
+) tab_saida 
+where  
+tab_entrada.turno = tab_saida.turno  
+and tab_entrada.pessoa_id = tab_saida.pessoa_id  
+and tab_entrada.data = tab_saida.data 
+and tab_entrada.seq = tab_saida.seq
+and tab_entrada.data between @data_inicio and @data_fim
+order by nome
